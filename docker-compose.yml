@@ -1,0 +1,43 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+  api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://founder:founder@postgres:5432/founder_os
+      REDIS_URL: redis://redis:6379/0
+      AI_PROVIDER: ollama
+      AI_BASE_URL: http://ollama:11434/v1
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: founder
+      POSTGRES_PASSWORD: founder
+      POSTGRES_DB: founder_os
+    volumes:
+      - founder_postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles:
+      - local-ai
+    volumes:
+      - ollama:/root/.ollama
+
+volumes:
+  founder_postgres:
+  ollama:
