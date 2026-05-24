@@ -1,90 +1,86 @@
-# Founder OS
+# Foundry
 
-**0 to 1 control surface for solo founders.**
+**Client outreach and money stats for founder-led growth.**
 
-A unified operating dashboard that consolidates investor CRM, outreach campaigns, competitor tracking, customer discovery, metrics, fundraising pipeline, and AI-assisted tooling into a single interface.
+Foundry is a focused prototype for automated outbound marketing: contact import,
+AI-personalized outreach, adaptive sequences, social follow-up, analytics, and
+the money metrics that show whether the motion is working.
 
-Built as a full-stack prototype — React frontend with mock data + FastAPI backend scaffold ready for production wiring.
+The frontend is a React/Tailwind app with mock operating data. The backend is a
+FastAPI scaffold with real AI provider adapters and a local fallback.
 
 ---
 
-## Features
+## Modules
 
 | Module | Description |
 |---|---|
-| **Dashboard** | Weekly AI-generated brief, metric cards, action items, activity feed |
-| **Investor CRM** | Kanban pipeline + table view, AI workspace for follow-ups and meeting prep |
-| **Outreach** | Campaign management, email templates with variables, analytics |
-| **Competitors** | Monitoring cards with signals, detail drawer, AI strategy tools |
-| **Discovery** | Customer interview tracker, pain point clusters, synthesis documents |
-| **Metrics** | MRR/growth charts, burn/runway, churn, DAU/WAU/MAU, cohort analysis |
-| **Fundraising** | Seed round tracker, data room management, diligence requests |
-| **Settings** | Integrations (Stripe, PostHog, GitHub, etc.), AI provider config |
-| **Billing** | Pricing plans (Solo $19/mo, Team $49/mo, Accelerator $199/mo) |
+| **Dashboard** | Daily operating queue, outreach performance, MRR, cash runway |
+| **Outreach** | Campaigns, contacts, sequences, templates, LinkedIn, social, analytics |
+| **Money** | MRR, revenue vs burn, runway, conversion and funnel stats |
+| **Settings** | Resend, Stripe, enrichment providers, social connectors, AI providers |
+| **Billing** | Plan cards and API plan-gating scaffold |
+
+Investment CRM and fundraising tracking were intentionally removed for now.
 
 ---
 
-## Tech Stack
+## AI Provider Routing
 
-### Frontend
-- **React 19** + **TypeScript 5.8** — UI framework
-- **Vite 7** — Build tool and dev server
-- **Tailwind CSS 3.4** — Utility-first styling (dark theme)
-- **Recharts 2.15** — Charts and data visualization
-- **Lucide React** — Icon set
-- **IBM Plex Mono** — Monospace typography
+`POST /ai/draft` uses a provider abstraction:
 
-### Backend
-- **Python 3.12** — Runtime
-- **FastAPI** — Async web framework
-- **Uvicorn** — ASGI server
-- **Pydantic** — Data validation
-- **psycopg** — PostgreSQL driver
-- **redis** — Cache / job queue
-- **httpx** — HTTP client (AI provider calls)
-- **playwright** — Browser automation (competitor signal detection)
+- Ollama local
+- LM Studio
+- Hugging Face Inference
+- OpenRouter
+- Gemini
+- Claude
+- deterministic local fallback
 
-### Infrastructure
-- **Docker** — Multi-stage frontend build (node → nginx)
-- **Docker Compose** — Orchestrates web, api, postgres, redis, ollama
+Defaults are free-first. If the configured provider is unavailable or missing a
+key, the API returns a deterministic draft instead of failing the workflow.
+
+Useful env vars:
+
+```bash
+AI_PROVIDER=ollama
+AI_MODEL=llama3.1
+AI_BASE_URL=http://localhost:11434/v1
+AI_FREE_FIRST=true
+OPENROUTER_API_KEY=
+HUGGINGFACE_API_KEY=
+GEMINI_API_KEY=
+ANTHROPIC_API_KEY=
+```
 
 ---
 
 ## Quick Start
 
 ```bash
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
+```
 
-# Or run full stack with Docker
+Frontend dev server: `http://localhost:5173`
+
+Run the full stack:
+
+```bash
 docker compose up
 ```
 
-The dev server starts at `http://localhost:5173` (bound to all interfaces).
+Optional local AI service:
 
----
-
-## Docker Compose Architecture
-
-```
-web (nginx) → api (FastAPI) → postgres + redis
-                            ↘ ollama (optional, local-ai profile)
+```bash
+docker compose --profile local-ai up
 ```
 
 ---
 
 ## Keyboard Navigation
 
-- `J` / `K` — Switch between views
-- `Cmd+K` / `Ctrl+K` — Open command palette
-- `Esc` — Close overlays
-- Sidebar collapse state persisted in `localStorage`
-
----
-
-## License
-
-This project is not yet licensed.
+- `J` / `K` switches primary views
+- `Cmd+K` / `Ctrl+K` opens command palette
+- `Esc` closes overlays
+- Sidebar collapse state persists in `localStorage`

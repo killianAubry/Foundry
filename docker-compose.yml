@@ -11,7 +11,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://founder:founder@postgres:5432/founder_os
+      DATABASE_URL: postgresql://foundry:foundry@postgres:5432/foundry
       REDIS_URL: redis://redis:6379/0
       AI_PROVIDER: ollama
       AI_BASE_URL: http://ollama:11434/v1
@@ -22,11 +22,11 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: founder
-      POSTGRES_PASSWORD: founder
-      POSTGRES_DB: founder_os
+      POSTGRES_USER: foundry
+      POSTGRES_PASSWORD: foundry
+      POSTGRES_DB: foundry
     volumes:
-      - founder_postgres:/var/lib/postgresql/data
+      - foundry_postgres:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
@@ -39,5 +39,5 @@ services:
       - ollama:/root/.ollama
 
 volumes:
-  founder_postgres:
+  foundry_postgres:
   ollama:

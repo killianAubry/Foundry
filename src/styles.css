@@ -106,12 +106,8 @@ button {
     @apply flex items-center gap-3 border-b border-grid py-2 text-sm text-muted last:border-b-0;
   }
 
-  .kanban-col {
-    @apply min-h-[440px] rounded-md border border-grid bg-panel p-2;
-  }
-
-  .investor-card {
-    @apply rounded border border-grid bg-elevated p-3 transition hover:border-yellow/70;
+  .sequence-node {
+    @apply min-h-28 rounded-sm border border-grid bg-panel p-3;
   }
 
   .data-table {
@@ -148,6 +144,10 @@ button {
 
   .diff-block {
     @apply my-4 space-y-2 rounded-sm border border-grid bg-panel p-3 text-xs;
+  }
+
+  .calendar-cell {
+    @apply min-h-36 rounded-sm border border-grid bg-panel p-3;
   }
 
   .integration-card,

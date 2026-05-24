@@ -2,27 +2,24 @@ import {
   Activity,
   Bell,
   Bot,
-  Briefcase,
-  Building2,
+  CalendarDays,
   ChevronLeft,
   Command,
   CreditCard,
-  Database,
   DollarSign,
   FileText,
   Gauge,
   Home,
   Inbox,
   LineChart as LineChartIcon,
-  Lock,
+  Link,
   Mail,
   Menu,
+  MessageSquare,
   Network,
   Search,
   Send,
   Settings,
-  Sparkles,
-  Target,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -39,144 +36,126 @@ import {
   YAxis,
 } from 'recharts';
 import { useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 
-type View =
-  | 'dashboard'
-  | 'investors'
-  | 'outreach'
-  | 'competitors'
-  | 'discovery'
-  | 'metrics'
-  | 'fundraising'
-  | 'settings'
-  | 'billing';
+type View = 'dashboard' | 'outreach' | 'money' | 'settings' | 'billing';
+type OutreachTab = 'campaigns' | 'contacts' | 'sequences' | 'templates' | 'linkedin' | 'social' | 'analytics';
 
-type NavItem = {
-  id: View;
+type NavItem<T extends string> = {
+  id: T;
   label: string;
-  icon: typeof Home;
+  icon: LucideIcon;
 };
 
-const workspaceNav: NavItem[] = [
+type Stat = {
+  label: string;
+  value: string;
+  delta: string;
+  icon: LucideIcon;
+  tone?: 'yellow' | 'green' | 'red' | 'blue';
+};
+
+const mainNav: NavItem<View>[] = [
   { id: 'dashboard', label: 'Dashboard', icon: Home },
-  { id: 'investors', label: 'Investor CRM', icon: Briefcase },
   { id: 'outreach', label: 'Outreach', icon: Send },
-  { id: 'competitors', label: 'Competitors', icon: Building2 },
-  { id: 'discovery', label: 'Discovery', icon: Inbox },
-  { id: 'metrics', label: 'Metrics', icon: Gauge },
-  { id: 'fundraising', label: 'Fundraising', icon: DollarSign },
+  { id: 'money', label: 'Money', icon: DollarSign },
 ];
 
-const accountNav: NavItem[] = [
+const accountNav: NavItem<View>[] = [
   { id: 'settings', label: 'Settings', icon: Settings },
   { id: 'billing', label: 'Billing', icon: CreditCard },
 ];
 
+const outreachTabs: NavItem<OutreachTab>[] = [
+  { id: 'campaigns', label: 'Campaigns', icon: Gauge },
+  { id: 'contacts', label: 'Contacts', icon: Users },
+  { id: 'sequences', label: 'Sequences', icon: Network },
+  { id: 'templates', label: 'Templates', icon: FileText },
+  { id: 'linkedin', label: 'LinkedIn', icon: Link },
+  { id: 'social', label: 'Social', icon: MessageSquare },
+  { id: 'analytics', label: 'Analytics', icon: LineChartIcon },
+];
+
 const pageTitles: Record<View, string> = {
-  dashboard: 'Weekly Brief',
-  investors: 'Investor CRM',
-  outreach: 'Auto Outreach Engine',
-  competitors: 'Competitor Tracker',
-  discovery: 'Customer Discovery Hub',
-  metrics: 'Metrics Dashboard',
-  fundraising: 'Fundraising Pipeline',
+  dashboard: 'Command Center',
+  outreach: 'Outreach',
+  money: 'Money Stats',
   settings: 'Settings',
   billing: 'Billing',
 };
 
-const sevenDay = [
-  { day: 'M', reply: 18, contacts: 4, sent: 42, revenue: 1200 },
-  { day: 'T', reply: 21, contacts: 7, sent: 56, revenue: 1280 },
-  { day: 'W', reply: 16, contacts: 5, sent: 50, revenue: 1290 },
-  { day: 'T', reply: 27, contacts: 10, sent: 64, revenue: 1390 },
-  { day: 'F', reply: 24, contacts: 8, sent: 48, revenue: 1510 },
-  { day: 'S', reply: 31, contacts: 3, sent: 20, revenue: 1530 },
-  { day: 'S', reply: 28, contacts: 2, sent: 18, revenue: 1575 },
+const trendData = [
+  { day: 'Mon', sent: 42, reply: 18, meetings: 2, mrr: 1200, cash: 182 },
+  { day: 'Tue', sent: 56, reply: 21, meetings: 3, mrr: 1280, cash: 180 },
+  { day: 'Wed', sent: 50, reply: 16, meetings: 2, mrr: 1290, cash: 178 },
+  { day: 'Thu', sent: 64, reply: 27, meetings: 5, mrr: 1390, cash: 176 },
+  { day: 'Fri', sent: 48, reply: 24, meetings: 4, mrr: 1510, cash: 174 },
+  { day: 'Sat', sent: 20, reply: 31, meetings: 2, mrr: 1530, cash: 173 },
+  { day: 'Sun', sent: 18, reply: 28, meetings: 3, mrr: 1575, cash: 172 },
 ];
 
-const investors = [
-  { name: 'Maya Chen', firm: 'Northstar', stage: 'Researching', days: 2, next: 'score fit', amount: '$250k', source: 'warm' },
-  { name: 'Andre Williams', firm: 'A16Z', stage: 'Outreach sent', days: 12, next: 'follow up', amount: '$500k', source: 'cold' },
-  { name: 'Priya Nair', firm: 'Operator Fund', stage: 'Intro requested', days: 4, next: 'nudge Sarah', amount: '$150k', source: 'intro' },
-  { name: 'Jon Bell', firm: 'Seedcamp', stage: 'First meeting', days: 1, next: 'prep brief', amount: '$300k', source: 'warm' },
-  { name: 'Rina Sol', firm: 'TinySeed', stage: 'In diligence', days: 7, next: 'send metrics', amount: '$200k', source: 'warm' },
-  { name: 'Ari Katz', firm: 'SignalFire', stage: 'Committed', days: 0, next: 'wire docs', amount: '$250k', source: 'intro' },
-];
-
-const stages = ['Researching', 'Outreach sent', 'Intro requested', 'First meeting', 'In diligence', 'Passed', 'Committed'];
-
-const campaigns = [
-  { name: 'Seed investor wedge', type: 'investors', status: 'active', sent: 188, reply: '24%' },
-  { name: 'Design partners', type: 'customers', status: 'draft', sent: 42, reply: '31%' },
-  { name: 'Press launch', type: 'press', status: 'paused', sent: 16, reply: '12%' },
-];
-
-const competitors = [
-  { name: 'Clay', signal: 'Pricing changed', changes: 4, last: 'today', color: '#E5C07B' },
-  { name: 'Attio', signal: 'Hiring surge', changes: 9, last: '1d', color: '#9CC88E' },
-  { name: 'Folk', signal: 'New feature', changes: 2, last: '2d', color: '#B78FD4' },
-  { name: 'Affinity', signal: 'News spike', changes: 6, last: '3d', color: '#7BB7C7' },
-];
-
-const interviews = [
-  { name: 'Leah K.', company: 'Tandem', role: 'Founder', status: 'processed', pain: 9 },
-  { name: 'Marco P.', company: 'Vector', role: 'CEO', status: 'reviewed', pain: 7 },
-  { name: 'Nadia S.', company: 'Orbit', role: 'Growth', status: 'raw', pain: 6 },
-  { name: 'Evan R.', company: 'Relay', role: 'Founder', status: 'processed', pain: 8 },
-];
-
-const metricSeries = Array.from({ length: 12 }, (_, i) => ({
-  month: `D${i * 7}`,
-  mrr: 900 + i * 180 + (i % 3) * 90,
-  churn: 7 - i * 0.22,
-  users: 120 + i * 38,
-  burn: 28000 + i * 350,
+const monthlyMoney = Array.from({ length: 10 }, (_, index) => ({
+  month: `M${index + 1}`,
+  mrr: 2800 + index * 920 + (index % 3) * 240,
+  revenue: 4100 + index * 1180,
+  burn: 18800 + index * 360,
+  runway: 16.5 - index * 0.42,
 }));
 
+const campaigns = [
+  { name: 'Design partner push', type: 'Customers', status: 'Active', progress: 71, sent: 388, open: '62%', reply: '24%', meetings: 18, last: '12m' },
+  { name: 'Agency operators', type: 'Partners', status: 'Draft', progress: 16, sent: 42, open: '48%', reply: '31%', meetings: 5, last: '2h' },
+  { name: 'Founder newsletter', type: 'Content', status: 'Paused', progress: 44, sent: 820, open: '41%', reply: '9%', meetings: 7, last: '1d' },
+];
+
+const contacts = [
+  { name: 'Leah Kim', title: 'Founder', company: 'Tandem', email: 'verified', source: 'CSV', enriched: true, campaign: 'Design partner push', status: 'in sequence', last: 'today' },
+  { name: 'Marco Pena', title: 'CEO', company: 'Vector', email: 'verified', source: 'LinkedIn', enriched: true, campaign: 'Agency operators', status: 'replied', last: '1d' },
+  { name: 'Nadia Shah', title: 'Growth', company: 'Orbit', email: 'risky', source: 'Inbound', enriched: false, campaign: 'Design partner push', status: 'not contacted', last: '2d' },
+  { name: 'Evan Ross', title: 'Founder', company: 'Relay', email: 'verified', source: 'Manual', enriched: true, campaign: 'Founder newsletter', status: 'meeting booked', last: '3d' },
+  { name: 'Ava Li', title: 'Ops Lead', company: 'Northline', email: 'invalid', source: 'CSV', enriched: false, campaign: 'none', status: 'bounced', last: '4d' },
+];
+
 const aiProviders = [
-  { name: 'Ollama local', model: 'llama3.1 / mistral', cost: 'free self-hosted', status: 'recommended' },
+  { name: 'Ollama local', model: 'llama3.1 / mistral', cost: 'free self-hosted', status: 'active' },
   { name: 'LM Studio', model: 'OpenAI-compatible local', cost: 'free self-hosted', status: 'ready' },
   { name: 'Hugging Face', model: 'serverless endpoint', cost: 'free tier key', status: 'configure' },
   { name: 'OpenRouter', model: 'free model presets', cost: 'free quota varies', status: 'configure' },
   { name: 'Gemini', model: 'Flash free tier', cost: 'free tier key', status: 'configure' },
-  { name: 'Claude', model: 'sonnet-4-20250514', cost: 'paid fallback', status: 'optional' },
+  { name: 'Claude', model: 'claude-sonnet-4-20250514', cost: 'paid fallback', status: 'optional' },
 ];
 
 const integrations: Array<{ name: string; desc: string; icon: LucideIcon }> = [
-  { name: 'Stripe', desc: 'revenue + subscriptions', icon: DollarSign },
-  { name: 'PostHog / Plausible / Mixpanel', desc: 'product analytics', icon: LineChartIcon },
-  { name: 'GitHub', desc: 'technical health', icon: Network },
-  { name: 'Linear / Jira', desc: 'velocity + bugs', icon: Activity },
-  { name: 'Brex / Mercury', desc: 'burn + runway', icon: CreditCard },
-  { name: 'Resend', desc: 'email sending', icon: Mail },
+  { name: 'Resend', desc: 'send, inbound replies, webhooks', icon: Mail },
+  { name: 'Stripe', desc: 'revenue and subscription events', icon: DollarSign },
+  { name: 'PostHog / Plausible', desc: 'activation and conversion metrics', icon: LineChartIcon },
+  { name: 'Apollo / Hunter', desc: 'contact enrichment and email verification', icon: Users },
+  { name: 'PhantomBuster', desc: 'LinkedIn queue execution', icon: Link },
+  { name: 'Twitter/X API', desc: 'engagement and DM automation', icon: MessageSquare },
 ];
 
 export function App() {
   const [activeView, setActiveView] = useState<View>('dashboard');
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('founder-os-sidebar') === 'collapsed');
+  const [activeOutreachTab, setActiveOutreachTab] = useState<OutreachTab>('campaigns');
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('foundry-sidebar') === 'collapsed');
   const [searchOpen, setSearchOpen] = useState(false);
-  const [tableMode, setTableMode] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('founder-os-sidebar', collapsed ? 'collapsed' : 'open');
+    localStorage.setItem('foundry-sidebar', collapsed ? 'collapsed' : 'open');
   }, [collapsed]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      const key = event.key.toLowerCase();
+      if ((event.metaKey || event.ctrlKey) && key === 'k') {
         event.preventDefault();
         setSearchOpen(true);
       }
       if (event.key === 'Escape') setSearchOpen(false);
-      if (!searchOpen && event.key.toLowerCase() === 'j') {
-        const all = [...workspaceNav, ...accountNav];
+      if (!searchOpen && (key === 'j' || key === 'k')) {
+        const all = [...mainNav, ...accountNav];
         const index = all.findIndex((item) => item.id === activeView);
-        setActiveView(all[(index + 1) % all.length].id);
-      }
-      if (!searchOpen && event.key.toLowerCase() === 'k') {
-        const all = [...workspaceNav, ...accountNav];
-        const index = all.findIndex((item) => item.id === activeView);
-        setActiveView(all[(index - 1 + all.length) % all.length].id);
+        setActiveView(all[(index + (key === 'j' ? 1 : -1) + all.length) % all.length].id);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -186,41 +165,22 @@ export function App() {
   const content = useMemo(() => {
     switch (activeView) {
       case 'dashboard':
-        return <Dashboard />;
-      case 'investors':
-        return <InvestorCrm tableMode={tableMode} onToggleMode={() => setTableMode((value) => !value)} />;
+        return <Dashboard setActiveView={setActiveView} />;
       case 'outreach':
-        return <Outreach />;
-      case 'competitors':
-        return <Competitors />;
-      case 'discovery':
-        return <Discovery />;
-      case 'metrics':
-        return <Metrics />;
-      case 'fundraising':
-        return <Fundraising />;
+        return <Outreach activeTab={activeOutreachTab} setActiveTab={setActiveOutreachTab} />;
+      case 'money':
+        return <Money />;
       case 'settings':
         return <SettingsView />;
       case 'billing':
         return <Billing />;
     }
-  }, [activeView, tableMode]);
+  }, [activeView, activeOutreachTab]);
 
   return (
-    <div className="min-h-screen bg-canvas text-ink font-mono">
-      <div className="fixed inset-x-0 top-0 z-40 h-7 border-b border-grid bg-panel px-3 text-[11px] text-muted flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-yellow">founder-os</span>
-          <span>·</span>
-          <span>workspace / pre-seed / default</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span>ai: ollama local</span>
-          <span className="text-greenline">status: synced</span>
-        </div>
-      </div>
-
-      <aside className={`fixed left-0 top-7 bottom-6 z-30 border-r border-grid bg-panel transition-all ${collapsed ? 'w-12' : 'w-[220px]'}`}>
+    <div className="min-h-screen bg-canvas font-mono text-ink">
+      <StatusBar />
+      <aside className={`fixed bottom-6 left-0 top-7 z-30 border-r border-grid bg-panel transition-all ${collapsed ? 'w-12' : 'w-[220px]'}`}>
         <div className="flex h-full flex-col">
           <div className="flex h-14 items-center gap-2 border-b border-grid px-3">
             <button className="icon-control" aria-label="Toggle sidebar" onClick={() => setCollapsed((value) => !value)}>
@@ -228,12 +188,12 @@ export function App() {
             </button>
             {!collapsed && (
               <div>
-                <div className="text-sm text-ink">Founder OS</div>
-                <div className="text-[10px] uppercase text-muted">0 to 1 control surface</div>
+                <div className="text-sm text-ink">Foundry</div>
+                <div className="text-[10px] uppercase text-muted">outreach + money</div>
               </div>
             )}
           </div>
-          <NavSection title="workspace" items={workspaceNav} activeView={activeView} setActiveView={setActiveView} collapsed={collapsed} />
+          <NavSection title="foundry" items={mainNav} activeView={activeView} setActiveView={setActiveView} collapsed={collapsed} />
           <div className="mt-auto">
             <NavSection title="account" items={accountNav} activeView={activeView} setActiveView={setActiveView} collapsed={collapsed} />
             <div className="border-t border-grid p-2">
@@ -251,15 +211,15 @@ export function App() {
         </div>
       </aside>
 
-      <main className={`min-h-screen pt-7 pb-6 transition-all ${collapsed ? 'pl-12' : 'pl-[220px]'}`}>
+      <main className={`min-h-screen pb-6 pt-7 transition-all ${collapsed ? 'pl-12' : 'pl-[220px]'}`}>
         <header className="sticky top-7 z-20 flex h-16 items-center justify-between border-b border-grid bg-canvas/95 px-5 backdrop-blur">
           <div>
-            <div className="text-[10px] uppercase tracking-normal text-muted">workspace · {activeView}</div>
+            <div className="text-[10px] uppercase text-muted">foundry · {activeView}</div>
             <h1 className="text-xl leading-tight text-ink">{pageTitles[activeView]}</h1>
           </div>
           <button className="search-strip" onClick={() => setSearchOpen(true)}>
             <Search size={15} />
-            <span>search contacts, emails, companies</span>
+            <span>search contacts, campaigns, replies</span>
             <kbd>cmd+k</kbd>
           </button>
           <div className="flex items-center gap-2">
@@ -276,11 +236,27 @@ export function App() {
       </main>
 
       <div className="fixed inset-x-0 bottom-0 z-40 flex h-6 items-center justify-between border-t border-grid bg-panel px-3 text-[11px] text-muted">
-        <span className="text-yellow">ok: j/k nav · cmd+k search · esc close</span>
-        <span>docker/self-hostable · postgres · redis · fastapi api contract mocked</span>
+        <span className="text-yellow">ok: j/k nav · cmd+k search · ai drafts editable</span>
+        <span>api: fastapi · ai: free-first provider router · jobs: apscheduler/rq scaffold</span>
       </div>
 
       {searchOpen && <CommandPalette onClose={() => setSearchOpen(false)} setActiveView={setActiveView} />}
+    </div>
+  );
+}
+
+function StatusBar() {
+  return (
+    <div className="fixed inset-x-0 top-0 z-40 flex h-7 items-center justify-between border-b border-grid bg-panel px-3 text-[11px] text-muted">
+      <div className="flex items-center gap-2">
+        <span className="text-yellow">foundry</span>
+        <span>·</span>
+        <span>workspace / go-to-market / default</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <span>ai: ollama local</span>
+        <span className="text-greenline">status: draft-only</span>
+      </div>
     </div>
   );
 }
@@ -293,7 +269,7 @@ function NavSection({
   collapsed,
 }: {
   title: string;
-  items: NavItem[];
+  items: NavItem<View>[];
   activeView: View;
   setActiveView: (view: View) => void;
   collapsed: boolean;
@@ -302,390 +278,396 @@ function NavSection({
     <div className="py-3">
       {!collapsed && <div className="px-3 pb-2 text-[10px] uppercase text-dim">-- {title} --</div>}
       <div className="space-y-1 px-1.5">
-        {items.map((item) => {
-          const Icon = item.icon;
-          const active = item.id === activeView;
-          return (
-            <button
-              key={item.id}
-              className={`nav-item ${active ? 'nav-item-active' : ''} ${collapsed ? 'justify-center px-0' : ''}`}
-              title={item.label}
-              onClick={() => setActiveView(item.id)}
-            >
-              <Icon size={15} />
-              {!collapsed && <span>{item.label}</span>}
-            </button>
-          );
-        })}
+        {items.map((item) => (
+          <NavButton key={item.id} item={item} active={item.id === activeView} collapsed={collapsed} onClick={() => setActiveView(item.id)} />
+        ))}
       </div>
     </div>
   );
 }
 
-function Dashboard() {
-  const metricCards = [
-    { label: 'MRR / stripe', value: '$15.7k', delta: '+12.4%', icon: DollarSign },
-    { label: 'active users', value: '1,284', delta: '+98', icon: Users },
-    { label: 'open investor convos', value: '21', delta: '4 stale', icon: Briefcase },
-    { label: 'emails sent this week', value: '348', delta: 'cap 500', icon: Mail },
+function NavButton<T extends string>({ item, active, collapsed, onClick }: { item: NavItem<T>; active: boolean; collapsed: boolean; onClick: () => void }) {
+  const Icon = item.icon;
+  return (
+    <button className={`nav-item ${active ? 'nav-item-active' : ''} ${collapsed ? 'justify-center px-0' : ''}`} title={item.label} onClick={onClick}>
+      <Icon size={15} />
+      {!collapsed && <span>{item.label}</span>}
+    </button>
+  );
+}
+
+function Dashboard({ setActiveView }: { setActiveView: (view: View) => void }) {
+  const stats: Stat[] = [
+    { label: 'MRR', value: '$15.7k', delta: '+12.4%', icon: DollarSign },
+    { label: 'cash runway', value: '13.4mo', delta: '$172k cash', icon: Gauge, tone: 'green' },
+    { label: 'meetings booked', value: '28', delta: '+9 this week', icon: CalendarDays, tone: 'blue' },
+    { label: 'reply rate', value: '24%', delta: '+3.1 pts', icon: Mail },
   ];
 
   return (
-    <div className="space-y-4">
+    <ModuleStack>
       <section className="panel-card border-yellow/60">
-        <div className="section-head">
-          <div>
-            <div className="eyebrow">monday 08:00 cron · editable ai output</div>
-            <h2>Weekly brief</h2>
-          </div>
-          <span className="badge yellow">dismiss</span>
-        </div>
+        <PanelHeader eyebrow="daily brief · editable ai output" title="What needs attention" badge="draft" />
         <div className="grid gap-3 text-sm text-muted md:grid-cols-3">
-          <p>MRR rose 12.4% while active users crossed 1.2k. Reply quality improved on design partner outreach, but investor follow-up latency is drifting.</p>
-          <p>Competitor monitoring flagged Clay pricing changes and an Attio enterprise hiring spike. Discovery calls keep clustering around pipeline hygiene and follow-up anxiety.</p>
-          <p className="text-ink">Top priorities: follow up with A16Z, ship pricing comparison copy, and run 6 more customer interviews before Friday.</p>
+          <p>Outreach is producing booked calls at a lower cost than paid acquisition. Keep the Design partner push active and increase the daily cap from 50 to 70.</p>
+          <p>Cash remains stable, but burn is trending up by $360 per month. Revenue growth covers it if the current 24% reply rate holds.</p>
+          <p className="text-ink">Next moves: enrich 38 risky contacts, launch the inbound fast-follow sequence, and pause the losing subject variant.</p>
         </div>
       </section>
 
-      <div className="grid gap-3 lg:grid-cols-4">
-        {metricCards.map((metric) => {
-          const Icon = metric.icon;
-          return (
-            <div className="metric-card" key={metric.label}>
-              <Icon size={16} className="text-muted" />
-              <div className="mt-4 text-2xl text-yellow">{metric.value}</div>
-              <div className="text-[11px] uppercase text-muted">{metric.label}</div>
-              <div className="mt-2 text-xs text-greenline">{metric.delta}</div>
-            </div>
-          );
-        })}
-      </div>
+      <StatGrid stats={stats} />
 
       <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
         <section className="panel-card">
-          <div className="section-head">
-            <h2>Action items</h2>
-            <span className="badge">ai ranked</span>
-          </div>
-          {['Follow up with Andre Williams at A16Z after 12 silent days.', '3 competitor job postings suggest enterprise sales push.', 'Reply rate dropped on press launch variant B.', 'Generate meeting prep for Seedcamp first meeting.'].map((item, index) => (
-            <div className="list-row" key={item}>
-              <span className="index">{String(index + 1).padStart(2, '0')}</span>
-              <span>{item}</span>
-              <span className="ml-auto text-yellow">open</span>
-            </div>
+          <PanelHeader title="Operating queue" badge="ai ranked" />
+          {['38 contacts need enrichment before next send window.', 'Variant B is underperforming by 8.2 reply-rate points.', '5 inbound leads are waiting for first-response approval.', 'LinkedIn queue has 14 eligible connection requests.'].map((item, index) => (
+            <ActionRow key={item} index={index + 1} text={item} action="open" onClick={() => setActiveView('outreach')} />
           ))}
         </section>
         <section className="panel-card">
-          <div className="section-head">
-            <h2>Activity feed</h2>
-            <span className="badge">live</span>
+          <PanelHeader title="Money pulse" badge="stripe" />
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={monthlyMoney}>
+                <CartesianGrid stroke="#2A2A2A" />
+                <XAxis dataKey="month" stroke="#888" />
+                <YAxis stroke="#888" />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Line type="monotone" dataKey="mrr" stroke="#E5C07B" strokeWidth={2} />
+                <Line type="monotone" dataKey="burn" stroke="#E06C6C" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-          {['Email opened · Maya Chen · 4m', 'Investor stage changed · TinySeed · 1h', 'Competitor diff stored · Clay pricing · 3h', 'Interview processed · Leah K. · 5h', 'Stripe invoice paid · Team plan · 7h'].map((event) => (
-            <div className="feed-line" key={event}>
-              <span className="h-2 w-2 bg-greenline" />
-              <span>{event}</span>
-            </div>
-          ))}
         </section>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-4">
         {[
+          ['sent', 'sent'],
           ['reply rate', 'reply'],
-          ['new contacts', 'contacts'],
-          ['outreach sent', 'sent'],
-          ['revenue', 'revenue'],
+          ['meetings', 'meetings'],
+          ['cash', 'cash'],
         ].map(([label, key]) => (
           <SparkCard key={label} label={label} dataKey={key} />
         ))}
       </div>
+    </ModuleStack>
+  );
+}
+
+function Outreach({ activeTab, setActiveTab }: { activeTab: OutreachTab; setActiveTab: (tab: OutreachTab) => void }) {
+  return (
+    <div className="grid gap-4 xl:grid-cols-[180px_minmax(0,1fr)_320px]">
+      <section className="panel-card h-fit">
+        <PanelHeader title="Outreach" badge="module" />
+        <div className="space-y-1">
+          {outreachTabs.map((tab) => (
+            <NavButton key={tab.id} item={tab} active={tab.id === activeTab} collapsed={false} onClick={() => setActiveTab(tab.id)} />
+          ))}
+        </div>
+      </section>
+      <section className="min-w-0">{renderOutreachTab(activeTab)}</section>
+      <ContextPanel activeTab={activeTab} />
     </div>
   );
 }
 
-function SparkCard({ label, dataKey }: { label: string; dataKey: string }) {
+function renderOutreachTab(activeTab: OutreachTab) {
+  switch (activeTab) {
+    case 'campaigns':
+      return <CampaignsTab />;
+    case 'contacts':
+      return <ContactsTab />;
+    case 'sequences':
+      return <SequencesTab />;
+    case 'templates':
+      return <TemplatesTab />;
+    case 'linkedin':
+      return <LinkedInTab />;
+    case 'social':
+      return <SocialTab />;
+    case 'analytics':
+      return <OutreachAnalyticsTab />;
+  }
+}
+
+function CampaignsTab() {
   return (
-    <section className="panel-card h-36">
-      <div className="mb-2 text-xs uppercase text-muted">{label}</div>
-      <ResponsiveContainer width="100%" height="75%">
-        <LineChart data={sevenDay}>
-          <Line type="monotone" dataKey={dataKey} stroke="#E5C07B" strokeWidth={2} dot={false} />
-          <Tooltip contentStyle={{ background: '#262626', border: '1px solid #2A2A2A', color: '#F2F2F2' }} />
-        </LineChart>
-      </ResponsiveContainer>
+    <ModuleStack>
+      <Toolbar items={['new campaign', 'wizard', 'export csv']} active="new campaign" />
+      <div className="grid gap-3 2xl:grid-cols-3">
+        {campaigns.map((campaign) => (
+          <section className="panel-card" key={campaign.name}>
+            <PanelHeader title={campaign.name} badge={campaign.status} />
+            <div className="mb-3 text-xs text-muted">{campaign.type} · last activity {campaign.last}</div>
+            <Progress value={campaign.progress} />
+            <div className="mt-4 grid grid-cols-4 gap-2">
+              <MiniStat value={String(campaign.sent)} label="sent" />
+              <MiniStat value={campaign.open} label="open" />
+              <MiniStat value={campaign.reply} label="reply" />
+              <MiniStat value={String(campaign.meetings)} label="meetings" />
+            </div>
+            <div className="mt-4 flex gap-2">
+              {['pause', 'duplicate', 'archive'].map((item) => <span className="badge" key={item}>{item}</span>)}
+            </div>
+          </section>
+        ))}
+      </div>
+      <WizardPreview />
+    </ModuleStack>
+  );
+}
+
+function ContactsTab() {
+  return (
+    <ModuleStack>
+      <Toolbar items={['status', 'source', 'campaign', 'enriched', 'date', 'tags']} active="status" />
+      <section className="panel-card overflow-auto">
+        <table className="data-table">
+          <thead>
+            <tr>{['', 'Name', 'Title', 'Company', 'Email', 'Source', 'Enriched', 'Campaign', 'Status', 'Last'].map((head) => <th key={head}>{head}</th>)}</tr>
+          </thead>
+          <tbody>
+            {contacts.map((contact) => (
+              <tr key={contact.name}>
+                <td><input type="checkbox" aria-label={`Select ${contact.name}`} /></td>
+                <td><div className="flex items-center gap-2"><Avatar name={contact.name} />{contact.name}</div></td>
+                <td>{contact.title}</td>
+                <td>{contact.company}</td>
+                <td><span className={`badge ${contact.email === 'verified' ? 'green' : contact.email === 'invalid' ? 'red' : 'yellow'}`}>{contact.email}</span></td>
+                <td>{contact.source}</td>
+                <td>{contact.enriched ? <span className="badge green">yes</span> : <span className="badge">no</span>}</td>
+                <td>{contact.campaign}</td>
+                <td>{contact.status}</td>
+                <td>{contact.last}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+      <div className="grid gap-3 lg:grid-cols-3">
+        {['CSV import + mapping', 'LinkedIn CSV import', 'Manual add drawer'].map((title) => <AbstractionCard key={title} title={title} lines={['validate', 'dedupe', 'enrich async']} />)}
+      </div>
+    </ModuleStack>
+  );
+}
+
+function SequencesTab() {
+  const nodes = ['Email · day 0', 'Wait · 3d', 'Condition · opened?', 'Email A/B', 'LinkedIn connect', 'End'];
+  return (
+    <ModuleStack>
+      <Toolbar items={['cold email', 'warm intro', 'inbound fast-follow']} active="cold email" />
+      <section className="panel-card">
+        <PanelHeader title="Sequence builder" badge="adaptive" />
+        <div className="grid gap-3 lg:grid-cols-6">
+          {nodes.map((node, index) => (
+            <div className="sequence-node" key={node}>
+              <div className="text-yellow">{String(index + 1).padStart(2, '0')}</div>
+              <div className="mt-3 text-sm">{node}</div>
+              <div className="mt-2 text-[11px] text-muted">{index < nodes.length - 1 ? 'routes next step' : 'complete'}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+      <div className="grid gap-3 lg:grid-cols-3">
+        {['evaluate condition', 'send window guard', 'daily cap guard'].map((title) => <AbstractionCard key={title} title={title} lines={['redis counter', 'timezone aware', 'pause on reply']} />)}
+      </div>
+    </ModuleStack>
+  );
+}
+
+function TemplatesTab() {
+  return (
+    <ModuleStack>
+      <Toolbar items={['editor', 'variables', 'preview', 'quality check']} active="editor" />
+      <section className="panel-card grid gap-4 lg:grid-cols-[1fr_260px]">
+        <div>
+          <label className="field-label">subject</label>
+          <div className="input-shell">quick question about {'{{company}}'} growth</div>
+          <label className="field-label mt-4">body</label>
+          <div className="editor-shell">
+            <p>Hi {'{{first_name}}'},</p>
+            <p>{'{{personalized_opener}}'}</p>
+            <p>Foundry helps founders turn raw contacts into booked meetings with AI-personalized sequences. Worth a 15 minute compare-notes call?</p>
+          </div>
+        </div>
+        <div>
+          <PanelHeader title="Variables" badge="insert" />
+          {['first_name', 'company', 'title', 'personalized_opener', 'industry', 'company_size'].map((variable) => <div className="list-row" key={variable}>{`{{${variable}}}`}</div>)}
+        </div>
+      </section>
+    </ModuleStack>
+  );
+}
+
+function LinkedInTab() {
+  return (
+    <ModuleStack>
+      <Toolbar items={['connection requests', 'messages']} active="connection requests" />
+      <section className="panel-card overflow-auto">
+        <table className="data-table">
+          <thead>
+            <tr>{['Name', 'Company', 'Title', 'Status', 'Sent date', 'Note'].map((head) => <th key={head}>{head}</th>)}</tr>
+          </thead>
+          <tbody>
+            {contacts.slice(0, 4).map((contact, index) => (
+              <tr key={contact.name}>
+                <td>{contact.name}</td><td>{contact.company}</td><td>{contact.title}</td><td>{index % 2 ? 'accepted' : 'pending'}</td><td>{contact.last}</td><td>ai note queued</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+      <AbstractionCard title="Safety layer" lines={['20/day max', '2-5 minute gap', 'pause on warning', 'skip email replies']} />
+    </ModuleStack>
+  );
+}
+
+function SocialTab() {
+  return (
+    <ModuleStack>
+      <Toolbar items={['x engagement', 'content calendar', 'newsletter', 'inbound forms']} active="content calendar" />
+      <section className="panel-card">
+        <PanelHeader title="Content calendar" badge="weekly" />
+        <div className="grid gap-2 md:grid-cols-7">
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
+            <div className="calendar-cell" key={day}>
+              <div className="text-yellow">{day}</div>
+              <div className="mt-3 text-xs text-muted">{index % 2 ? 'LinkedIn post' : 'Newsletter section'}</div>
+              <span className="badge mt-4">{index < 5 ? 'draft' : 'empty'}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+      <div className="grid gap-3 lg:grid-cols-3">
+        {['Twitter thread', 'LinkedIn post', 'Newsletter section'].map((title) => <AbstractionCard key={title} title={title} lines={['3 variants', 'edit inline', 'schedule']} />)}
+      </div>
+    </ModuleStack>
+  );
+}
+
+function OutreachAnalyticsTab() {
+  const funnel = [
+    { name: 'sent', value: 1240 },
+    { name: 'opened', value: 744 },
+    { name: 'replied', value: 298 },
+    { name: 'booked', value: 74 },
+  ];
+  return (
+    <ModuleStack>
+      <StatGrid stats={[
+        { label: 'total sent', value: '1,240', delta: 'this month', icon: Send },
+        { label: 'open rate', value: '60%', delta: '+4 pts', icon: Mail },
+        { label: 'reply rate', value: '24%', delta: '+3 pts', icon: Inbox },
+        { label: 'meetings booked', value: '74', delta: '+18', icon: CalendarDays },
+      ]} />
+      <div className="grid gap-4 xl:grid-cols-2">
+        <section className="panel-card">
+          <PanelHeader title="Reply rate over time" badge="30d" />
+          <ChartLine data={trendData} keys={['reply', 'meetings']} />
+        </section>
+        <section className="panel-card">
+          <PanelHeader title="Funnel" badge="step" />
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={funnel}>
+              <XAxis dataKey="name" stroke="#888" />
+              <YAxis stroke="#888" />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Bar dataKey="value">
+                {funnel.map((_, index) => <Cell key={index} fill={['#E5C07B', '#7BB7C7', '#9CC88E', '#B78FD4'][index]} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </section>
+      </div>
+      <section className="panel-card">
+        <PanelHeader title="A/B results" badge="significance pending" />
+        <div className="grid gap-3 md:grid-cols-2">
+          <MiniStat value="A · 27%" label="control reply rate" />
+          <MiniStat value="B · 18.8%" label="challenger reply rate" />
+        </div>
+      </section>
+    </ModuleStack>
+  );
+}
+
+function ContextPanel({ activeTab }: { activeTab: OutreachTab }) {
+  return (
+    <section className="panel-card h-fit">
+      <PanelHeader title="Context" badge={activeTab} />
+      <div className="space-y-3">
+        <PreviewBlock label="Selected contact" value="Leah Kim · Founder at Tandem" />
+        <PreviewBlock label="Email preview" value="AI opener resolved from enrichment context before launch." />
+        <AiWorkbench />
+      </div>
     </section>
   );
 }
 
-function InvestorCrm({ tableMode, onToggleMode }: { tableMode: boolean; onToggleMode: () => void }) {
+function AiWorkbench() {
+  const [draft, setDraft] = useState('Click generate to test the configured AI provider route.');
+  const [loading, setLoading] = useState(false);
+
+  async function generate() {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/ai/draft', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer demo-token',
+        },
+        body: JSON.stringify({
+          feature: 'personalized_opener',
+          context: {
+            contact: 'Leah Kim, Founder at Tandem',
+            enrichment_context: 'Tandem just launched a workflow automation feature for small teams and Leah writes about founder-led sales.',
+          },
+        }),
+      });
+      const data = await response.json();
+      setDraft(data.draft ?? data.detail ?? 'No draft returned.');
+    } catch (error) {
+      setDraft(error instanceof Error ? error.message : 'AI request failed.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="toolbar">
-        <span className="badge yellow">+ add investor</span>
-        <span className="badge">csv export</span>
-        <span className="badge">warm intro mapper</span>
-        <button className="badge" onClick={onToggleMode}>{tableMode ? 'kanban view' : 'table view'}</button>
-      </div>
-      {tableMode ? (
-        <section className="panel-card overflow-auto">
-          <table className="data-table">
-            <thead>
-              <tr>{['Name', 'Firm', 'Stage', 'Last contact', 'Next action', 'Amount', 'Source', 'Tags'].map((head) => <th key={head}>{head}</th>)}</tr>
-            </thead>
-            <tbody>
-              {investors.map((investor) => (
-                <tr key={investor.name}>
-                  <td>{investor.name}</td><td>{investor.firm}</td><td>{investor.stage}</td><td>{investor.days}d</td><td>{investor.next}</td><td>{investor.amount}</td><td>{investor.source}</td><td>seed, b2b</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      ) : (
-        <div className="grid min-w-0 gap-3 xl:grid-cols-7">
-          {stages.map((stage) => (
-            <section className="kanban-col" key={stage}>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-xs uppercase text-muted">{stage}</h2>
-                <span className="badge">{investors.filter((i) => i.stage === stage).length}</span>
-              </div>
-              <div className="space-y-2">
-                {investors.filter((i) => i.stage === stage).map((investor) => (
-                  <div className="investor-card" key={investor.name}>
-                    <div className="flex justify-between gap-2">
-                      <span className="text-sm text-ink">{investor.name}</span>
-                      <span className={`badge ${investor.source === 'cold' ? 'red' : 'green'}`}>{investor.source}</span>
-                    </div>
-                    <div className="mt-1 text-xs text-muted">{investor.firm}</div>
-                    <div className="mt-3 flex items-center justify-between text-[11px]">
-                      <span className={investor.days > 10 ? 'text-redline' : 'text-muted'}>{investor.days}d idle</span>
-                      <span className="text-yellow">{investor.next}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
-      <section className="panel-card grid gap-4 lg:grid-cols-[1fr_320px]">
-        <div>
-          <div className="section-head"><h2>AI investor workspace</h2><span className="badge">editable before send</span></div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {['Auto-draft follow-up', 'Investor fit score', 'Meeting prep brief'].map((name) => <AiTile key={name} title={name} />)}
-          </div>
-        </div>
-        <div className="border-l border-grid pl-4">
-          <h2 className="mb-3 text-sm">Timeline drawer</h2>
-          {['email sent', 'meeting logged', 'stage changed', 'note added'].map((row) => <div className="feed-line" key={row}><span className="h-2 w-2 bg-yellow" /><span>{row}</span></div>)}
-        </div>
-      </section>
+    <div className="rounded-sm border border-grid bg-panel p-3">
+      <div className="mb-2 flex items-center gap-2 text-sm text-yellow"><Bot size={15} /> AI draft route</div>
+      <p className="text-xs leading-5 text-muted">{draft}</p>
+      <button className="badge yellow mt-3" onClick={generate} disabled={loading}>{loading ? 'generating' : 'generate'}</button>
     </div>
   );
 }
 
-function Outreach() {
-  const heat = ['M', 'T', 'W', 'T', 'F'].flatMap((day, dayIndex) => [9, 10, 11, 14, 15].map((hour, hourIndex) => ({ day, hour, value: (dayIndex + 1) * (hourIndex + 2) })));
+function Money() {
   return (
-    <div className="grid gap-4 xl:grid-cols-[280px_1fr_240px]">
-      <section className="panel-card">
-        <div className="section-head"><h2>Campaigns</h2><span className="badge yellow">new</span></div>
-        {campaigns.map((campaign) => (
-          <div className="list-row block" key={campaign.name}>
-            <div className="flex justify-between"><span>{campaign.name}</span><span className="badge">{campaign.status}</span></div>
-            <div className="mt-2 text-[11px] text-muted">{campaign.type} · {campaign.sent} sent · {campaign.reply} replies</div>
-          </div>
-        ))}
-      </section>
-      <section className="panel-card min-h-[620px]">
-        <div className="toolbar">
-          {['target list', 'templates', 'sequence', 'schedule'].map((tab, index) => <span key={tab} className={`badge ${index === 1 ? 'yellow' : ''}`}>{tab}</span>)}
-        </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div>
-            <label className="field-label">subject</label>
-            <div className="input-shell">quick question about {'{{company}}'} pipeline</div>
-            <label className="field-label mt-4">body</label>
-            <div className="editor-shell">
-              <p>Hi {'{{first_name}}'},</p>
-              <p>{'{{personalized_opener}}'}</p>
-              <p>We help solo founders turn investor, customer, and competitor signal into one operating surface. Worth comparing notes next week?</p>
-            </div>
-          </div>
-          <div className="space-y-3">
-            <AiTile title="Personalization engine" />
-            <AiTile title="Subject line generator" />
-            <AiTile title="Tone analyzer" />
-            <div className="panel-card bg-panel">
-              <h2 className="mb-2 text-sm">Sequence</h2>
-              {['day 0 · intro', 'day 3 · follow-up', 'day 7 · last touch'].map((step) => <div className="list-row" key={step}>{step}<span className="ml-auto text-muted">if no reply</span></div>)}
-            </div>
-          </div>
-        </div>
-      </section>
-      <section className="panel-card">
-        <div className="section-head"><h2>Analytics</h2><span className="badge">collapse</span></div>
-        <div className="grid grid-cols-2 gap-2">
-          {['sent 188', 'opened 91', 'replied 45', 'bounced 3'].map((metric) => <div className="mini-stat" key={metric}>{metric}</div>)}
-        </div>
-        <div className="mt-4 h-36">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={[{ name: 'A', v: 24 }, { name: 'B', v: 31 }, { name: 'C', v: 18 }]}>
-              <Bar dataKey="v" fill="#E5C07B" />
-              <XAxis dataKey="name" stroke="#888" />
-              <Tooltip contentStyle={{ background: '#262626', border: '1px solid #2A2A2A' }} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="mt-4 grid grid-cols-5 gap-1">
-          {heat.map((cell) => <div key={`${cell.day}${cell.hour}`} className="heat-cell" style={{ opacity: 0.25 + cell.value / 35 }} title={`${cell.day} ${cell.hour}:00`} />)}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function Competitors() {
-  return (
-    <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {competitors.map((competitor) => (
-          <section className="panel-card min-h-48" key={competitor.name}>
-            <div className="flex items-start justify-between">
-              <div className="grid h-10 w-10 place-items-center rounded-sm border border-grid bg-active text-sm" style={{ color: competitor.color }}>{competitor.name[0]}</div>
-              <span className="badge">{competitor.last}</span>
-            </div>
-            <h2 className="mt-5 text-lg">{competitor.name}</h2>
-            <div className="mt-2 text-sm text-yellow">{competitor.signal}</div>
-            <div className="mt-6 h-1.5 bg-active"><div className="h-full bg-yellow" style={{ width: `${competitor.changes * 9}%` }} /></div>
-            <div className="mt-2 text-xs text-muted">{competitor.changes} changes this week</div>
-          </section>
-        ))}
-      </div>
-      <section className="panel-card">
-        <div className="section-head"><h2>Detail drawer</h2><span className="badge">Clay</span></div>
-        <div className="toolbar">{['pricing', 'features', 'jobs', 'news', 'notes'].map((tab) => <span className="badge" key={tab}>{tab}</span>)}</div>
-        <div className="diff-block">
-          <div className="text-redline">- starter plan $149/mo, 1k credits</div>
-          <div className="text-greenline">+ starter plan $179/mo, 1.5k credits</div>
-        </div>
-        <AiTile title="Change summarizer" />
-        <AiTile title="Strategic inference" />
-        <AiTile title="Competitive moat analyzer" />
-      </section>
-    </div>
-  );
-}
-
-function Discovery() {
-  return (
-    <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
-      <section className="panel-card">
-        <div className="section-head"><h2>Interviews</h2><span className="badge yellow">add</span></div>
-        {interviews.map((interview) => (
-          <div className="list-row block" key={interview.name}>
-            <div className="flex justify-between"><span>{interview.name}</span><span className="badge">{interview.status}</span></div>
-            <div className="mt-1 text-[11px] text-muted">{interview.company} · {interview.role} · pain {interview.pain}/10</div>
-          </div>
-        ))}
-      </section>
-      <section className="panel-card">
-        <div className="grid gap-3 md:grid-cols-4">
-          {['24 interviews', '18 companies', '7.8 avg pain', '3 themes'].map((stat) => <div className="mini-stat" key={stat}>{stat}</div>)}
-        </div>
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          {['Follow-up anxiety', 'Investor data scattered', 'Manual competitor checking'].map((theme) => (
-            <div className="panel-card bg-panel" key={theme}>
-              <div className="section-head"><h2>{theme}</h2><span className="badge">quotes 8</span></div>
-              <p className="text-sm text-muted">Representative quotes and company mentions are grouped with evidence. Clicking opens all transcript excerpts.</p>
-            </div>
-          ))}
-          <div className="panel-card bg-panel">
-            <h2 className="mb-2 text-sm">Living synthesis doc</h2>
-            <p className="text-sm text-muted">What customers actually need: a single place that tells them what to do next, with every AI output editable and exportable.</p>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function Metrics() {
-  return (
-    <div className="grid gap-4 xl:grid-cols-3">
-      <section className="panel-card xl:col-span-2">
-        <div className="section-head"><h2>MRR + growth rate</h2><span className="badge">90d</span></div>
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={metricSeries}>
-              <CartesianGrid stroke="#2A2A2A" />
-              <XAxis dataKey="month" stroke="#888" />
-              <YAxis stroke="#888" />
-              <Tooltip contentStyle={{ background: '#262626', border: '1px solid #2A2A2A' }} />
-              <Line type="monotone" dataKey="mrr" stroke="#E5C07B" strokeWidth={2} />
-              <Line type="monotone" dataKey="users" stroke="#7BB7C7" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-      <section className="panel-card">
-        <div className="text-[11px] uppercase text-muted">burn + runway</div>
-        <div className="mt-4 text-5xl text-redline">$31k</div>
-        <div className="mt-2 text-sm text-muted">monthly burn · 13.4 months remaining</div>
-        <div className="mt-5 h-2 bg-active"><div className="h-full w-[67%] bg-greenline" /></div>
-      </section>
-      {['Churn rate', 'DAU / WAU / MAU', 'Revenue by cohort', 'Traffic sources', 'Conversion funnel', 'Anomaly alerts'].map((widget, index) => (
-        <section className="panel-card" key={widget}>
-          <div className="section-head"><h2>{widget}</h2><span className="badge">drag</span></div>
-          <div className="h-36">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={metricSeries.slice(0, 6)}>
-                <Bar dataKey={index % 2 ? 'users' : 'churn'} fill={index % 2 ? '#7BB7C7' : '#B78FD4'} />
-                <Tooltip contentStyle={{ background: '#262626', border: '1px solid #2A2A2A' }} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function Fundraising() {
-  const segments = [
-    { label: 'soft-circled', value: 28, color: '#E5C07B' },
-    { label: 'diligence', value: 18, color: '#B78FD4' },
-    { label: 'committed', value: 22, color: '#9CC88E' },
-  ];
-  return (
-    <div className="space-y-4">
-      <section className="panel-card">
-        <div className="section-head"><h2>$1.5m seed target</h2><span className="badge">SAFE · cap $12m</span></div>
-        <div className="flex h-4 overflow-hidden rounded-sm bg-active">
-          {segments.map((segment) => <div key={segment.label} style={{ width: `${segment.value}%`, background: segment.color }} />)}
-        </div>
-        <div className="mt-3 grid gap-2 md:grid-cols-4">
-          {['target $1.5m', 'soft $420k', 'diligence $270k', 'committed $330k'].map((item) => <div className="mini-stat" key={item}>{item}</div>)}
-        </div>
-      </section>
-      <div className="grid gap-4 xl:grid-cols-3">
+    <ModuleStack>
+      <StatGrid stats={[
+        { label: 'MRR', value: '$15.7k', delta: '+12.4%', icon: DollarSign },
+        { label: 'cash balance', value: '$172k', delta: '13.4mo runway', icon: CreditCard, tone: 'green' },
+        { label: 'monthly burn', value: '$31k', delta: '+$360', icon: Activity, tone: 'red' },
+        { label: 'conversion', value: '8.7%', delta: '+1.2 pts', icon: Gauge },
+      ]} />
+      <div className="grid gap-4 xl:grid-cols-[2fr_1fr]">
         <section className="panel-card">
-          <div className="section-head"><h2>Round summary</h2><span className="badge">live</span></div>
-          {['Lead investor status: open', 'Round type: SAFE', 'Valuation cap: $12m', 'Discount: 20%', 'Pro-rata: standard'].map((item) => <div className="list-row" key={item}>{item}</div>)}
+          <PanelHeader title="Revenue vs burn" badge="stripe" />
+          <ChartLine data={monthlyMoney} keys={['mrr', 'burn']} />
         </section>
         <section className="panel-card">
-          <div className="section-head"><h2>Data room</h2><span className="badge yellow">share</span></div>
-          {['Pitch deck', 'Financials', 'Cap table', 'Legal', 'Team bios', 'Product demo'].map((doc, index) => <div className="list-row" key={doc}>{doc}<span className="ml-auto badge">{index < 3 ? 'uploaded' : 'draft'}</span></div>)}
-        </section>
-        <section className="panel-card">
-          <div className="section-head"><h2>Diligence requests</h2><span className="badge red">2 overdue</span></div>
-          {['TinySeed · cohort retention · due today', 'Seedcamp · churn notes · overdue', 'Ari Katz · cap table · answered'].map((request) => <div className="list-row" key={request}>{request}</div>)}
+          <PanelHeader title="Runway" badge="cash" />
+          <div className="mt-6 text-5xl text-greenline">13.4</div>
+          <div className="mt-2 text-sm text-muted">months remaining at current burn</div>
+          <Progress value={67} />
         </section>
       </div>
-      <div className="grid gap-3 md:grid-cols-3">
-        {['SAFE/term sheet summarizer', 'Pitch deck reviewer', 'Closing update drafter'].map((name) => <AiTile key={name} title={name} />)}
+      <div className="grid gap-3 lg:grid-cols-3">
+        {['Top traffic sources', 'Revenue by cohort', 'Conversion funnel'].map((title) => <AbstractionCard key={title} title={title} lines={['stripe', 'analytics', 'postgres aggregate']} />)}
       </div>
-    </div>
+    </ModuleStack>
   );
 }
 
@@ -693,20 +675,20 @@ function SettingsView() {
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
       <section className="panel-card">
-        <div className="section-head"><h2>Integrations</h2><span className="badge">oauth/read-only where possible</span></div>
+        <PanelHeader title="Integrations" badge="connectors" />
         <div className="grid gap-3 md:grid-cols-2">
           {integrations.map(({ name, desc, icon: Icon }) => (
             <div className="integration-card" key={name}>
               <Icon size={18} />
               <div><div>{name}</div><div className="text-xs text-muted">{desc}</div></div>
-              <span className="ml-auto badge">connect</span>
+              <span className="badge ml-auto">connect</span>
             </div>
           ))}
         </div>
       </section>
       <section className="panel-card">
-        <div className="section-head"><h2>AI providers</h2><span className="badge yellow">free-first</span></div>
-        <p className="mb-4 text-sm text-muted">Provider routing is user-configurable. Local/free providers are prioritized; paid Claude can remain as a fallback for teams that add a key.</p>
+        <PanelHeader title="AI providers" badge="free-first" />
+        <p className="mb-4 text-sm text-muted">Foundry routes AI work through a provider abstraction. Local and free providers are tried first; Claude remains an optional paid fallback.</p>
         {aiProviders.map((provider) => (
           <div className="provider-row" key={provider.name}>
             <Bot size={16} className="text-yellow" />
@@ -714,7 +696,7 @@ function SettingsView() {
               <div className="truncate text-sm">{provider.name}</div>
               <div className="truncate text-[11px] text-muted">{provider.model} · {provider.cost}</div>
             </div>
-            <span className="ml-auto badge">{provider.status}</span>
+            <span className="badge ml-auto">{provider.status}</span>
           </div>
         ))}
         <div className="mt-4 space-y-3">
@@ -732,41 +714,165 @@ function Billing() {
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       {[
-        ['Solo', '$19', '1 user · all modules · 500 outreach emails/mo'],
+        ['Solo', '$19', '1 user · outreach + money stats · 500 emails/mo'],
         ['Team', '$49', '3 users · unlimited emails · all integrations'],
-        ['Accelerator', '$199', 'white label · unlimited users · cohort analytics'],
+        ['Growth', '$199', 'white label · unlimited users · automation queues'],
       ].map(([name, price, details], index) => (
         <section className={`panel-card ${index === 0 ? 'border-yellow/70' : ''}`} key={name}>
-          <div className="section-head"><h2>{name}</h2><span className="badge">{index === 0 ? 'current' : 'stripe'}</span></div>
+          <PanelHeader title={name} badge={index === 0 ? 'current' : 'stripe'} />
           <div className="text-4xl text-yellow">{price}<span className="text-sm text-muted">/mo</span></div>
           <p className="mt-4 text-sm text-muted">{details}</p>
-          <div className="mt-6 flex items-center gap-2 text-xs text-muted"><Lock size={14} /> plan gates enforced by API middleware</div>
+          <div className="mt-6 flex items-center gap-2 text-xs text-muted"><CreditCard size={14} /> plan gates enforced by API middleware</div>
         </section>
       ))}
     </div>
   );
 }
 
-function AiTile({ title }: { title: string }) {
+function ModuleStack({ children }: { children: ReactNode }) {
+  return <div className="space-y-4">{children}</div>;
+}
+
+function PanelHeader({ title, badge, eyebrow }: { title: string; badge?: string; eyebrow?: string }) {
   return (
-    <div className="ai-tile">
-      <Sparkles size={16} />
+    <div className="section-head">
       <div>
-        <div className="text-sm text-ink">{title}</div>
-        <div className="text-[11px] text-muted">draft only · editable · no auto-send</div>
+        {eyebrow && <div className="eyebrow">{eyebrow}</div>}
+        <h2>{title}</h2>
       </div>
+      {badge && <span className="badge yellow">{badge}</span>}
     </div>
   );
 }
 
+function StatGrid({ stats }: { stats: Stat[] }) {
+  return (
+    <div className="grid gap-3 lg:grid-cols-4">
+      {stats.map((stat) => <StatCard key={stat.label} stat={stat} />)}
+    </div>
+  );
+}
+
+function StatCard({ stat }: { stat: Stat }) {
+  const Icon = stat.icon;
+  const color = stat.tone === 'green' ? 'text-greenline' : stat.tone === 'red' ? 'text-redline' : stat.tone === 'blue' ? 'text-teBlue' : 'text-yellow';
+  return (
+    <div className="metric-card">
+      <Icon size={16} className="text-muted" />
+      <div className={`mt-4 text-2xl ${color}`}>{stat.value}</div>
+      <div className="text-[11px] uppercase text-muted">{stat.label}</div>
+      <div className="mt-2 text-xs text-greenline">{stat.delta}</div>
+    </div>
+  );
+}
+
+function SparkCard({ label, dataKey }: { label: string; dataKey: string }) {
+  return (
+    <section className="panel-card h-36">
+      <div className="mb-2 text-xs uppercase text-muted">{label}</div>
+      <ResponsiveContainer width="100%" height="75%">
+        <LineChart data={trendData}>
+          <Line type="monotone" dataKey={dataKey} stroke="#E5C07B" strokeWidth={2} dot={false} />
+          <Tooltip contentStyle={tooltipStyle} />
+        </LineChart>
+      </ResponsiveContainer>
+    </section>
+  );
+}
+
+function ChartLine({ data, keys }: { data: Array<Record<string, string | number>>; keys: string[] }) {
+  const colors = ['#E5C07B', '#E06C6C', '#7BB7C7'];
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <LineChart data={data}>
+        <CartesianGrid stroke="#2A2A2A" />
+        <XAxis dataKey={data[0].month ? 'month' : 'day'} stroke="#888" />
+        <YAxis stroke="#888" />
+        <Tooltip contentStyle={tooltipStyle} />
+        {keys.map((key, index) => <Line key={key} type="monotone" dataKey={key} stroke={colors[index]} strokeWidth={2} />)}
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+function Toolbar({ items, active }: { items: string[]; active: string }) {
+  return (
+    <div className="toolbar">
+      {items.map((item) => <span className={`badge ${item === active ? 'yellow' : ''}`} key={item}>{item}</span>)}
+    </div>
+  );
+}
+
+function ActionRow({ index, text, action, onClick }: { index: number; text: string; action: string; onClick: () => void }) {
+  return (
+    <button className="list-row flex w-full text-left" onClick={onClick}>
+      <span className="index">{String(index).padStart(2, '0')}</span>
+      <span>{text}</span>
+      <span className="ml-auto text-yellow">{action}</span>
+    </button>
+  );
+}
+
+function MiniStat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="mini-stat">
+      <div className="text-sm text-ink">{value}</div>
+      <div className="mt-1 text-[10px] uppercase text-muted">{label}</div>
+    </div>
+  );
+}
+
+function Progress({ value }: { value: number }) {
+  return <div className="mt-3 h-1.5 bg-active"><div className="h-full bg-yellow" style={{ width: `${value}%` }} /></div>;
+}
+
+function Avatar({ name }: { name: string }) {
+  return <span className="grid h-7 w-7 place-items-center rounded-sm border border-grid bg-active text-[10px] text-yellow">{name.split(' ').map((part) => part[0]).join('')}</span>;
+}
+
+function PreviewBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-sm border border-grid bg-panel p-3">
+      <div className="text-[10px] uppercase text-muted">{label}</div>
+      <div className="mt-2 text-sm text-ink">{value}</div>
+    </div>
+  );
+}
+
+function AbstractionCard({ title, lines }: { title: string; lines: string[] }) {
+  return (
+    <section className="panel-card bg-panel">
+      <PanelHeader title={title} badge="layer" />
+      {lines.map((line) => <div className="feed-line" key={line}><span className="h-2 w-2 bg-yellow" /><span>{line}</span></div>)}
+    </section>
+  );
+}
+
+function WizardPreview() {
+  return (
+    <section className="panel-card">
+      <PanelHeader title="Campaign wizard" badge="5 steps" />
+      <div className="grid gap-3 lg:grid-cols-5">
+        {['setup', 'contacts', 'sequence', 'templates', 'review'].map((step, index) => (
+          <div className="sequence-node" key={step}>
+            <div className="text-yellow">{String(index + 1).padStart(2, '0')}</div>
+            <div className="mt-3 text-sm">{step}</div>
+            <div className="mt-2 text-[11px] text-muted">abstracted panel</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function CommandPalette({ onClose, setActiveView }: { onClose: () => void; setActiveView: (view: View) => void }) {
-  const entries = [...workspaceNav, ...accountNav];
+  const entries = [...mainNav, ...accountNav];
   return (
     <div className="fixed inset-0 z-50 bg-black/50" onClick={onClose}>
       <div className="mx-auto mt-24 w-[min(680px,calc(100vw-32px))] rounded-md border border-yellow bg-elevated shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center gap-3 border-b border-grid p-3">
           <Command size={16} className="text-yellow" />
-          <input autoFocus className="w-full bg-transparent text-sm outline-none placeholder:text-dim" placeholder=": open investors, search maya, export csv..." />
+          <input autoFocus className="w-full bg-transparent text-sm outline-none placeholder:text-dim" placeholder=": open outreach, search contact, generate opener..." />
           <kbd className="text-xs text-muted">esc</kbd>
         </div>
         <div className="p-2">
@@ -792,3 +898,9 @@ function CommandPalette({ onClose, setActiveView }: { onClose: () => void; setAc
     </div>
   );
 }
+
+const tooltipStyle = {
+  background: '#262626',
+  border: '1px solid #2A2A2A',
+  color: '#F2F2F2',
+};
